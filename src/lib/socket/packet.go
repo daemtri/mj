@@ -44,18 +44,18 @@ func Unpack(buffer []byte, length uint32, readerChannel chan *Packet) uint32 {
 		}
 		count := uint32(buffer[i])
 		// 读取信息数据长度
-		messageLength := DecodeUint32(buffer[i+HeaderLen+PROTOLen: i+HANDDLen])
+		messageLength := DecodeUint32(buffer[i+HeaderLen+PROTOLen : i+HANDDLen])
 		// 只有包头，数据不足一包
 		if length < i+HANDDLen+messageLength {
 			break
 		}
 		p := &Packet{
-			proto:   DecodeUint32(buffer[i+HeaderLen: i+HANDDLen]),
+			proto:   DecodeUint32(buffer[i+HeaderLen : i+HeaderLen+PROTOLen]),
 			content: make([]byte, messageLength),
 			count:   count,
 		}
 		// 读取整包信息数据
-		copy(p.content, buffer[i+HANDDLen: i+HANDDLen+messageLength])
+		copy(p.content, buffer[i+HANDDLen:i+HANDDLen+messageLength])
 		i += HANDDLen + messageLength
 		readerChannel <- p
 	}
