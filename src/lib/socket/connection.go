@@ -1,13 +1,13 @@
 package socket
 
 import (
-	"lib/event"
 	"game/interfacer"
+	"lib/event"
 	"runtime/debug"
 	"time"
 
-	"github.com/golang/glog"
 	"code.google.com/p/goprotobuf/proto"
+	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 )
 
@@ -16,29 +16,29 @@ const (
 	OFFLINE = "offline"
 )
 
-func newConnection(socket *websocket.Conn,ip uint32) *Connection {
+func newConnection(socket *websocket.Conn, ip uint32) *Connection {
 	c := &Connection{
 		writeChan: make(chan interfacer.IProto, 128),
 		ws:        socket,
 		ReadChan:  make(chan *Packet, 128),
 		connected: true,
 		closeChan: make(chan bool, 1),
-		ipAddr:ip,
+		ipAddr:    ip,
 	}
 	return c
 }
 
 type Connection struct {
-	writeChan chan interfacer.IProto
-	userid    string // 玩家ID
-	logined   bool   // true 标示已登录
-	connected bool   // false标示连接断开
-	ws        *websocket.Conn
-	ReadChan  chan *Packet
-	closeChan chan bool
-	ipAddr    uint32 // 当前连得IP地址
-	event.Dispatcher // 事件管理器
-	count     uint32
+	writeChan        chan interfacer.IProto
+	userid           string // 玩家ID
+	logined          bool   // true 标示已登录
+	connected        bool   // false标示连接断开
+	ws               *websocket.Conn
+	ReadChan         chan *Packet
+	closeChan        chan bool
+	ipAddr           uint32 // 当前连得IP地址
+	event.Dispatcher        // 事件管理器
+	count            uint32
 }
 
 func (c *Connection) GetConnected() bool {
@@ -76,6 +76,7 @@ func (c *Connection) LoginTimeout() {
 		if !c.logined {
 			c.Close()
 		}
+		glog.Errorln("wait for login timeout")
 	}
 }
 
@@ -93,7 +94,7 @@ func (c *Connection) Reader(readChan chan *Packet) {
 			if !ok {
 				return
 			}
-			//glog.Infoln(packet.GetProto())
+			glog.Infoln(packet.GetProto())
 			c.count++
 			c.count = c.count % 256
 			if c.count != packet.count {
@@ -138,18 +139,19 @@ func (c *Connection) ReadPump() {
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
+			glog.Errorln("read message", err)
 			return
 		}
-		copy(tmpBuffer[length:],message)
-		length +=uint32( len(message))
-		readCount := Unpack(tmpBuffer,length, c.ReadChan)
+		copy(tmpBuffer[length:], message)
+		length += uint32(len(message))
+		readCount := Unpack(tmpBuffer, length, c.ReadChan)
 
-		reminder:= length - readCount
-		if reminder <0{
+		reminder := length - readCount
+		if reminder < 0 {
 			reminder = 0
 		}
-		if length - readCount > 0{
-			copy(tmpBuffer,tmpBuffer[readCount:reminder])
+		if length-readCount > 0 {
+			copy(tmpBuffer, tmpBuffer[readCount:reminder])
 		}
 		length = reminder
 	}
@@ -192,16 +194,18 @@ func (c *Connection) WritePump() {
 	for {
 		select {
 		// 如果管道关闭则退出for循环，因为管道关闭不会阻塞导致for进入死循环
-		case proto, ok := <-c.writeChan:
+		case p, ok := <-c.writeChan:
 			if !ok {
 				c.write(websocket.CloseMessage, nil)
 				return
 			}
-			if err := c.write(websocket.TextMessage, proto); err != nil {
+			if err := c.write(websocket.BinaryMessage, p); err != nil {
+				glog.Errorln(err)
 				return
 			}
 		case <-ticker.C:
 			if err := c.write(websocket.PingMessage, nil); err != nil {
+				glog.Errorln(err)
 				return
 			}
 		}

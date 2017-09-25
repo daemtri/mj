@@ -6,8 +6,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
-	"strings"
 	"lib/utils"
+	"strings"
 )
 
 type Packet struct {
@@ -16,26 +16,26 @@ type Packet struct {
 	content []byte
 }
 
-func (this *Packet) SetProto(proto uint32) {
-	this.proto = proto
+func (p *Packet) SetProto(proto uint32) {
+	p.proto = proto
 }
 
-func (this *Packet) SetContent(content []byte) {
-	this.content = content
+func (p *Packet) SetContent(content []byte) {
+	p.content = content
 }
 
-func (this *Packet) GetProto() uint32 {
-	return this.proto
+func (p *Packet) GetProto() uint32 {
+	return p.proto
 }
-func (this *Packet) GetContent() []byte {
-	return this.content
+func (p *Packet) GetContent() []byte {
+	return p.content
 }
 
 const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = 9 * time.Second
-	maxMessageSize =10*1024
+	maxMessageSize = 10 * 1024
 	//连接建立后5秒内没有收到登陆请求，断开socket
 	waitForLogin = time.Second * 5
 )
@@ -52,23 +52,24 @@ func wSHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	if r.Method != "GET" {
+		glog.Errorln("Method is get, dropped")
 		return
 	}
 
-
-	socket, err := upgrader.Upgrade(w, r, nil)
+	sock, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		glog.Errorln(err)
 		return
 	}
 
-	ip:=socket.RemoteAddr().String()
-	iparr:=strings.Split(ip,":")
+	ip := sock.RemoteAddr().String()
+	iparr := strings.Split(ip, ":")
 	var iip uint32
-	if len(iparr) > 0{
+	if len(iparr) > 0 {
 		ip = iparr[0]
-		iip =utils.InetToaton(ip)
+		iip = utils.InetToaton(ip)
 	}
-	c := newConnection(socket,iip)
+	c := newConnection(sock, iip)
 	go c.Reader(c.ReadChan)
 	go c.LoginTimeout()
 	go c.WritePump()
