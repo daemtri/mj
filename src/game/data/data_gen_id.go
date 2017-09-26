@@ -1,10 +1,10 @@
 package data
 
 import (
-	"gopkg.in/mgo.v2/bson"
-	"sync"
-	"strconv"
 	"config"
+	"gopkg.in/mgo.v2/bson"
+	"strconv"
+	"sync"
 )
 
 var gen *ServerIDGen
@@ -14,23 +14,21 @@ var lockroomid sync.Mutex
 
 var roomIDGen *RoomIDGen
 
-
 func InitIDGen() {
-	gen = &ServerIDGen{ServerID:strconv.Itoa(config.Opts().Server_id)}
+	gen = &ServerIDGen{ServerID: strconv.Itoa(config.Opts().Server_id)}
 	gen.Insert()
 
-
-	roomIDGen = &RoomIDGen{ServerID:uint64(config.Opts().Server_id)}
+	roomIDGen = &RoomIDGen{ServerID: uint64(config.Opts().Server_id)}
 	roomIDGen.Insert()
 }
-
 
 type RoomIDGen struct {
 	ServerID   uint64 `bson:"_id"`
 	LastRoomID uint64 `bson:"LastRoomID"`
 }
+
 func (this *RoomIDGen) Insert() error {
-	count, _ := C(_GEN_ROOM_ID).Find(bson.M{"_id":this.ServerID}).Count()
+	count, _ := C(_GEN_ROOM_ID).Find(bson.M{"_id": this.ServerID}).Count()
 	if count == 0 {
 		this.LastRoomID = 1000
 		return C(_GEN_ROOM_ID).Insert(this)
@@ -40,9 +38,9 @@ func (this *RoomIDGen) Insert() error {
 
 func (this *RoomIDGen) Get() (uint64, error) {
 	lockroomid.Lock()
-	defer  lockroomid.Unlock()
-	this.ServerID =uint64(config.Opts().Server_id)
-	err := C(_GEN_ROOM_ID).UpdateId(this.ServerID, bson.M{"$inc":bson.M{"LastRoomID":1}})
+	defer lockroomid.Unlock()
+	this.ServerID = uint64(config.Opts().Server_id)
+	err := C(_GEN_ROOM_ID).UpdateId(this.ServerID, bson.M{"$inc": bson.M{"LastRoomID": 1}})
 	if err != nil {
 		return 0, err
 	}
@@ -50,14 +48,12 @@ func (this *RoomIDGen) Get() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return  strconv.ParseUint(strconv.FormatUint(this.ServerID , 10)+ strconv.FormatUint(this.LastRoomID, 10),10,64)
+	return strconv.ParseUint(strconv.FormatUint(this.ServerID, 10)+strconv.FormatUint(this.LastRoomID, 10), 10, 64)
 }
-
 
 func GenRoomID() (uint64, error) {
 	return roomIDGen.Get()
 }
-
 
 type ServerIDGen struct {
 	ServerID   string `bson:"_id"`
@@ -68,32 +64,32 @@ func GenUserID() (string, error) {
 	return gen.Get()
 }
 
-func (this *ServerIDGen) Exists() bool {
-	count, _ := C(_GEN_USER_ID).Find(bson.M{"_id":this.ServerID}).Count()
+func (s *ServerIDGen) Exists() bool {
+	count, _ := C(_GEN_USER_ID).Find(bson.M{"_id": s.ServerID}).Count()
 	return count != 0
 }
 
-func (this *ServerIDGen) Insert() error {
-	count, _ := C(_GEN_USER_ID).Find(bson.M{"_id":this.ServerID}).Count()
+func (s *ServerIDGen) Insert() error {
+	count, _ := C(_GEN_USER_ID).Find(bson.M{"_id": s.ServerID}).Count()
 	if count == 0 {
-		this.LastUserID = 6000
-		return C(_GEN_USER_ID).Insert(this)
+		s.LastUserID = 6000
+		return C(_GEN_USER_ID).Insert(s)
 	}
 	return nil
 }
 
-func (this *ServerIDGen) Get() (string, error) {
+func (s *ServerIDGen) Get() (string, error) {
 	lock.Lock()
-	defer  lock.Unlock()
-	this.ServerID = strconv.Itoa(config.Opts().Server_id)
-	err := C(_GEN_USER_ID).UpdateId(this.ServerID, bson.M{"$inc":bson.M{"LastUserID":1}})
+	defer lock.Unlock()
+	s.ServerID = strconv.Itoa(config.Opts().Server_id)
+	err := C(_GEN_USER_ID).UpdateId(s.ServerID, bson.M{"$inc": bson.M{"LastUserID": 1}})
 	if err != nil {
 		return "", err
 	}
-	err = C(_GEN_USER_ID).FindId(this.ServerID).One(this)
+	err = C(_GEN_USER_ID).FindId(s.ServerID).One(s)
 	if err != nil {
 		return "", err
 	}
 
-	return this.ServerID + strconv.FormatUint(this.LastUserID, 10), err
+	return s.ServerID + strconv.FormatUint(s.LastUserID, 10), err
 }
